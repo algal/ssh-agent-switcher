@@ -277,20 +277,16 @@ def self_install():
         print("ssh_agent_switcher.py is already installed in ~/.local/bin")
         print("Remove it first if you want to reinstall")
         sys.exit(0)
-    print(textwrap.dedent("""
-    This script installs ssh_agent_switcher.py
-    
-    ssh_agent_switcher.py:
-    1. fixes ssh agent forwarding so it works across persistent tmux session
-    2. does not require superuser permission
-    3. does require you to add a snippet to your .bash_login shell, to work
-    """))
-     
-    
-    # copy the current script into its install path
-    script_path = os.path.abspath(__file__)
-    os.makedirs(os.path.dirname(install_path),exist_ok=True)
-    shutil.copy2(script_path,install_path)
+    print("Attempting to install ssh_agent_switcher.py")
+
+    try:
+        # copy the current script into its install path
+        script_path = os.path.abspath(__file__)
+        os.makedirs(os.path.dirname(install_path),exist_ok=True)
+        shutil.copy2(script_path,install_path)
+    except Exception as e:
+        print("Installation failed")
+        sys.exit(1)
     
     bash_snippet = textwrap.dedent("""
     # add this to ~/.bash_login
@@ -311,7 +307,6 @@ def self_install():
     
     In order to complete installation, please add the following bash code to
     your ~/.bash_login file:
-    
     {bash_snippet}
     """))
     
