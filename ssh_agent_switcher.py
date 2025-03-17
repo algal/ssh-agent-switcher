@@ -5,6 +5,8 @@ socket provided by sshd.
 """
 
 import argparse
+import textwrap
+import shutil
 import errno
 import logging
 import os
@@ -269,10 +271,59 @@ def run_server(args) -> None:
         os.umask(old_umask)
     
 
+def self_install():
+    install_path = os.path.expanduser("~/.local/bin/ssh_agent_switcher.py")
+    if os.path.exists(install_path):
+        print("ssh_agent_switcher.py is already installed in ~/.local/bin")
+        print("Remove it first if you want to reinstall")
+        sys.exit(0)
+    print(textwrap.dedent("""
+    This script installs ssh_agent_switcher.py
+    
+    ssh_agent_switcher.py:
+    1. fixes ssh agent forwarding so it works across persistent tmux session
+    2. does not require superuser permission
+    3. does require you to add a snippet to your .bash_login shell, to work
+    """))
+     
+    
+    # copy the current script into its install path
+    script_path = os.path.abspath(__file__)
+    os.makedirs(os.path.dirname(install_path),exist_ok=True)
+    shutil.copy2(script_path,install_path)
+    
+    bash_snippet = textwrap.dedent("""
+    # add this to ~/.bash_login
+    if [ -e "$HOME/.local/bin/ssh_agent_switcher.py" ]; then 
+        if [ ! -e "/tmp/ssh-agent.${USER}" ]; then
+            if [ -n "${ZSH_VERSION}" ]; then
+                eval ~/.local/bin/ssh_agent_switcher.py 2>/dev/null "&!"
+            else
+                ~/.local/bin/ssh_agent_switcher.py 2>/dev/null &
+                disown 2>/dev/null || true
+            fi
+        fi
+        export SSH_AUTH_SOCK="/tmp/ssh-agent.${USER}"
+    fi
+    """)
+    
+    print(textwrap.dedent(f"""I have copied ssh_agent_switcher_.py into {install_path}.
+    
+    In order to complete installation, please add the following bash code to
+    your ~/.bash_login file:
+    
+    {bash_snippet}
+    """))
+    
 def main() -> None:
     """Main entry point for the program."""
-    parser = argparse.ArgumentParser(
-        description="SSH agent switcher that proxies connections to any valid SSH agent socket")
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
+    parser.description="Fixes SSH agent forwarding under tmux"
+    parser.add_argument(
+        "--install", 
+        action='store_true',default=False,
+        help="self-installs into ~/.local/bin"
+    )
     parser.add_argument(
         "--socketPath", 
         default=default_socket_path(),
@@ -283,15 +334,30 @@ def main() -> None:
         default="/tmp",
         help="directory where to look for running agents"
     )
+    parser.epilog='''
+    This script fixes agent forwarding under tmux.
+
+    It works by running a small daemon server, and proxying connections
+    to any valid SSH agent socket.
+
+    To work, it requires you to add a snippet to your .bash_login shell.
+
+    It does not require superuser permissions to install or to use.
+
+    It is derived from this work: https://blogsystem5.substack.com/p/ssh-agent-forwarding-and-tmux-done
+    '''
     
     args = parser.parse_args()
     
     # No positional arguments allowed
     if len(sys.argv) > 1 and sys.argv[1][0] != '-':
-        logging.error("No arguments allowed")
+        logging.error("No positional arguments allowed")
         sys.exit(1)
 
-    run_server(args)
+    if args.install:
+        self_install()
+    else:
+        run_server(args)
 
 if __name__ == "__main__":
     main()
