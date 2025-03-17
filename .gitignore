@@ -1,2 +1,3 @@
 bazel-*
 ssh-agent-switcher
+ssh-agent-switcher-go
