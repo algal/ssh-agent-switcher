@@ -216,28 +216,7 @@ def connection_handler_thread(client: socket.socket, agents_dir: str) -> None:
     handle_connection(client, agents_dir)
 
 
-def main() -> None:
-    """Main entry point for the program."""
-    parser = argparse.ArgumentParser(
-        description="SSH agent switcher that proxies connections to any valid SSH agent socket")
-    parser.add_argument(
-        "--socketPath", 
-        default=default_socket_path(),
-        help="path to the socket to listen on"
-    )
-    parser.add_argument(
-        "--agentsDir", 
-        default="/tmp",
-        help="directory where to look for running agents"
-    )
-    
-    args = parser.parse_args()
-    
-    # No positional arguments allowed
-    if len(sys.argv) > 1 and sys.argv[1][0] != '-':
-        logging.error("No arguments allowed")
-        sys.exit(1)
-    
+def run_server(args) -> None:
     if not args.socketPath:
         logging.error("socketPath is empty")
         sys.exit(1)
@@ -288,7 +267,31 @@ def main() -> None:
     finally:
         # Restore the original umask
         os.umask(old_umask)
+    
 
+def main() -> None:
+    """Main entry point for the program."""
+    parser = argparse.ArgumentParser(
+        description="SSH agent switcher that proxies connections to any valid SSH agent socket")
+    parser.add_argument(
+        "--socketPath", 
+        default=default_socket_path(),
+        help="path to the socket to listen on"
+    )
+    parser.add_argument(
+        "--agentsDir", 
+        default="/tmp",
+        help="directory where to look for running agents"
+    )
+    
+    args = parser.parse_args()
+    
+    # No positional arguments allowed
+    if len(sys.argv) > 1 and sys.argv[1][0] != '-':
+        logging.error("No arguments allowed")
+        sys.exit(1)
+
+    run_server(args)
 
 if __name__ == "__main__":
     main()
